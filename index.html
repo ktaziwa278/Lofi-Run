@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lofi Run – ASMR Edition</title>
+<style>
+  body {
+    margin: 0;
+    background: #0b1020;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+    font-family: system-ui, sans-serif;
+  }
+  /* Banner Ad */
+  #ad-banner {
+    width: 100%;
+    max-width: 728px;
+    height: 90px;
+    background: #020617;
+    color: #64748b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  canvas {
+    margin-top: 12px;
+    background: linear-gradient(#1e293b, #020617);
+    border-radius: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="ad-banner">Banner Ad (728×90)</div>
+<canvas id="game" width="800" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// Audio
+const stepSound = new Audio('footstep.mp3');
+const breathSound = new Audio('breathing.mp3');
+
+// Timing for breathing
+let lastBreath = 0;
+
+// Game variables
+let gravity = 0.6;
+let speed = 4;
+let score = 0;
+
+const player = {
+  x: 120,
+  y: 240,
+  w: 28,
+  h: 36,
+  vy: 0,
+  onGround: false,
+  justLanded: false
+};
+
+let platforms = [{ x: 0, y: 300, w: 900, h: 80 }];
+
+// Spawn platforms
+function spawnPlatform() {
+  const last = platforms[platforms.length - 1];
+  platforms.push({
+    x: last.x + 220 + Math.random() * 200,
+    y: 260 + Math.random() * 60,
+    w: 120 + Math.random() * 100,
+    h: 18
+  });
+}
+
+// Game update loop
+let lastTime = performance.now();
+function update(time) {
+  const deltaTime = time - lastTime;
+  lastTime = time;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Player physics
+  player.vy += gravity;
+  player.y += player.vy;
+  player.onGround = false;
+
+  // Platforms
+  platforms.forEach(p => {
+    p.x -= speed;
+    ctx.fillStyle = "#64748b";
+    ctx.beginPath();
+    ctx.roundRect(p.x, p.y, p.w, p.h, 8);
+    ctx.fill();
+
+    // Collision
+    if (
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x &&
+      player.y + player.h < p.y + 10 &&
+      player.y + player.h + player.vy >= p.y
+    ) {
+      player.vy = 0;
+      player.y = p.y - player.h;
+      player.onGround = true;
+    }
+  });
+
+  // Remove old platforms
+  if (platforms[0].x + platforms[0].w < 0) {
+    platforms.shift();
+    spawnPlatform();
+  }
+
+  // Player draw
+  ctx.fillStyle = "#e2e8f0";
+  ctx.beginPath();
+  ctx.roundRect(player.x, player.y, player.w, player.h, 12);
+  ctx.fill();
+
+  // Score
+  score += 0.02;
+  ctx.fillStyle = "#a78bfa";
+  ctx.fillText("Score " + Math.floor(score), 20, 30);
+
+  // Speed scaling
+  speed += 0.0004;
+
+  // Footstep sound
+  if (player.onGround && !player.justLanded) {
+    stepSound.volume = 0.3 + Math.random()*0.1;
+    stepSound.play();
+    player.justLanded = true;
+  } else if (!player.onGround) {
+    player.justLanded = false;
+  }
+
+  // Breathing sound every 4 seconds
+  lastBreath += deltaTime;
+  if (lastBreath > 4000) {
+    breathSound.volume = 0.2;
+    breathSound.play();
+    lastBreath = 0;
+  }
+
+  // Fall reset
+  if (player.y > canvas.height) reset();
+
+  requestAnimationFrame(update);
+}
+
+function reset() {
+  speed = 4;
+  score = 0;
+  player.y = 240;
+  player.vy = 0;
+  platforms = [{ x: 0, y: 300, w: 900, h: 80 }];
+}
+
+// Jump controls
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && player.onGround) player.vy = -12;
+});
+document.addEventListener("touchstart", e => {
+  if (player.onGround) player.vy = -12;
+  e.preventDefault();
+});
+
+update(performance.now());
+</script>
+
+</body>
+</html>
